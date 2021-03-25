@@ -8,7 +8,7 @@ class NotificationBypasser {
         return "Get notifications from specific server's when notifications are off or on dnd.";
     }
     getVersion() {
-        return "0.0.1";
+        return "0.0.2";
     }
     getAuthor() {
         return "Yakov";
@@ -26,6 +26,7 @@ class NotificationBypasser {
     start() {
         this.cancelPatch = BdApi.monkeyPatch(BdApi.findModuleByProps("dispatch"), 'dispatch', { after: this.dispatch.bind(this) });
         this.whitelist = BdApi.loadData('NotificationBypasser', 'whitelist') || [];
+        this.enableiffocused = BdApi.loadData('NotificationBypasser', 'enableiffocused') || true;
     }
     stop() {
         this.cancelPatch();
@@ -36,7 +37,7 @@ class NotificationBypasser {
         const message = data.methodArguments[0].message;
         if (!this.whitelist.includes(message.guild_id))
             return;
-        if (this.currentChannel() === message.channel_id && require('electron').remote.getCurrentWindow().isFocused())
+        if (this.currentChannel() === message.channel_id && this.enableiffocused && require('electron').remote.getCurrentWindow().isFocused())
             return;
         if (this.isMuted(message.guild_id, message.channel_id))
             return;
@@ -62,6 +63,9 @@ class NotificationBypasser {
         const div = document.createElement('div');
         const allowT = document.createElement('h6');
         const allow = document.createElement('textarea');
+        const div2 = document.createElement('div');
+        const checkboxT = document.createElement('h6');
+        const checkbox = document.createElement('input');
         const br = document.createElement('br');
         const button = document.createElement('button');
         button.innerText = 'Apply';
@@ -76,12 +80,28 @@ class NotificationBypasser {
         allow.value = this.whitelist.join(', ');
         allow.style.width = '100%';
         allow.style.minHeight = '6ch';
+        div2.style.display = 'flex';
+        div2.style.justifyContent = 'space-between';
+        checkboxT.innerText = 'Notify even if discord window is focused';
+        checkboxT.style.marginTop = '0.5ch';
+        checkboxT.style.marginBottom = '0.25ch';
+        checkbox.type = 'checkbox';
+        checkbox.checked = this.enableiffocused;
         button.addEventListener('click', _ => {
+            button.innerText = 'Applied!';
+            setTimeout(function () {
+                button.innerText = 'Apply';
+            }, 1000);
             this.whitelist = allow.value.split(',').map(e => e.trim());
             BdApi.saveData('NotificationBypasser', 'whitelist', this.whitelist);
+            this.enableiffocused = checkbox.checked;
+            BdApi.saveData('NotificationBypasser', 'enableiffocused', this.enableiffocused);
         });
         div.appendChild(allowT);
         div.appendChild(allow);
+        div2.appendChild(checkboxT);
+        div2.appendChild(checkbox);
+        div.appendChild(div2);
         div.appendChild(br);
         div.appendChild(button);
         return div;
